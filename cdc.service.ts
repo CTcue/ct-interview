@@ -21,11 +21,6 @@ enum QueryMatchType {
     NoneAll
 }
 
-enum SortDirection {
-    Ascending,
-    Descending
-}
-
 class Section {
     id: string;
 }
@@ -35,7 +30,6 @@ class Question {
     disabled: boolean;
     questionType: QuestionType;
     answers?: Answer[];
-    sortDirection?: SortDirection;
 }
 
 class Answer {
@@ -54,7 +48,6 @@ class Query {
     answer?: Answer;
     category?: SearchCategoryType;
     match?: QueryMatchType;
-    sortDirection?: SortDirection;
 }
 
 type AnswerToTermsMap = Map<string, Query[]>;
@@ -85,7 +78,6 @@ export async function getDataCollectorQuery(
         AnswerMap,
         Query[],
         TermMap,
-        Map<string, boolean>, // collectedChildrenMap
         Map<string, Section>
     ]
 > {
@@ -95,8 +87,6 @@ export async function getDataCollectorQuery(
     const termToAnswerMap: TermToAnswerMap = new Map();
 
     const [sectionMap, questionMap, answerMap] = await getSectionsQuestionsAndAnswers(projectId);
-
-    const questionCombinedQueries = new Map<string, Query[]>();
 
     const answers = [...answerMap.values()];
 
@@ -115,8 +105,6 @@ export async function getDataCollectorQuery(
         })
         .filter((query): query is Query => Boolean(query));
 
-    const collectedChildrenMap = new Map<string, boolean>();
-
     if (!rootQueries.length) {
         return [
             undefined,
@@ -125,7 +113,6 @@ export async function getDataCollectorQuery(
             answerMap,
             [],
             new Map(),
-            collectedChildrenMap,
             sectionMap
         ];
     }
@@ -160,20 +147,6 @@ export async function getDataCollectorQuery(
         combinedQuery.groups.push(rootQuery);
 
         rootQuery.groups = tree.get(rootQuery.id) ?? [];
-
-        // Note: for now answers don't have nested groups, but
-        // walkTree is used to support it for future needs.
-        for (const term of rootQuery.groups) {
-            walkTree(term, answer, question, tree, {
-                termToAnswerMap,
-                answerToTermsMap,
-                collectedChildrenMap
-            });
-        }
-
-        // Keep track of all the answer rootQueries per question
-        // (we use them to create the question hashes)
-        addOneToMultiMap(questionCombinedQueries, question.id, rootQuery);
     }
 
     return [
@@ -183,54 +156,8 @@ export async function getDataCollectorQuery(
         answerMap,
         terms,
         termMap,
-        collectedChildrenMap,
         sectionMap
     ];
-}
-
-/**
- * Propagates sortDirection down the tree.
- * Creates indexes that maps entities to entities in the tree
- */
-function walkTree(
-    term: Query,
-    answer: Answer,
-    question: Question,
-    tree: Map<string, Query[]>,
-    indexes: {
-        termToAnswerMap: TermToAnswerMap;
-        answerToTermsMap: AnswerToTermsMap;
-        collectedChildrenMap: Map<string, boolean>;
-    }
-): void {
-    const termId = term.id;
-
-    term.sortDirection = question.sortDirection;
-
-    indexes.termToAnswerMap.set(termId, answer);
-    addOneToMultiMap(indexes.answerToTermsMap, answer.id, term);
-
-    term.groups = tree.get(term.id) ?? [];
-
-    if (term.disabled || !term.groups.length) {
-        return;
-    }
-
-    // In CDC this should only ever walk 1-2 levels deep
-    // because we don't allow groups in CDC
-    // except for nested criteria
-    for (const child of term.groups) {
-        if (child.disabled) {
-            continue;
-        }
-
-        walkTree(child, answer, question, tree, indexes);
-    }
-
-    if (term.category) {
-        const collectedChildren = term.groups.filter((v) => v.collect);
-        indexes.collectedChildrenMap.set(term.id, collectedChildren.length !== 0);
-    }
 }
 
 /** Returns all sections, questions and answers for the project with the given identifier */
