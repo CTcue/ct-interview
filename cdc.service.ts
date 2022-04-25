@@ -176,26 +176,6 @@ export async function getDataCollectorQuery(
         addOneToMultiMap(questionCombinedQueries, question.id, rootQuery);
     }
 
-    // Create a map of `question.queryHash` based on the answer queries
-    for (const questionId of questionCombinedQueries.keys()) {
-        // Create an answer map consisting only the answers of this question
-        // (e.g. we don't want it to be affected by other questions)
-        const question = questionMap.get(questionId);
-
-        // CTAPP-5130: Do not hash disabled questions
-        if (!question || question.disabled) {
-            continue;
-        }
-
-        // NOTE: This requires `hydrateQuestions` to be called
-        const localAnswers = question.answers ?? [];
-        const localAnswersMap = new Map<string, Answer>();
-
-        for (const answer of localAnswers) {
-            localAnswersMap.set(answer.id, answer);
-        }
-    }
-
     return [
         combinedQuery,
         answerToTermsMap,
