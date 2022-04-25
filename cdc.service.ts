@@ -35,7 +35,7 @@ class Question {
     disabled: boolean;
     questionType: QuestionType;
     answers?: Answer[];
-    sortDirection: SortDirection;
+    sortDirection?: SortDirection;
 }
 
 class Answer {
@@ -52,9 +52,9 @@ class Query {
     parent?: Query;
     groups?: Query[];
     answer?: Answer;
-    category: SearchCategoryType;
-    match: QueryMatchType;
-    sortDirection: SortDirection;
+    category?: SearchCategoryType;
+    match?: QueryMatchType;
+    sortDirection?: SortDirection;
 }
 
 type AnswerToTermsMap = Map<string, Query[]>;
