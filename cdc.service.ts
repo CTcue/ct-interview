@@ -1,4 +1,4 @@
-// Minimal type definitions for the purpose of ...
+// Minimal type definitions for completeness
 
 export enum SearchCategoryType {
     Demographic,
